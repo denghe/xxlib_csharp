@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.28307.329
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xxlib_csharp", "xxlib_csharp\xxlib_csharp.csproj", "{6DD7A5A2-3411-4ECB-A811-2421BE960743}"
+	ProjectSection(ProjectDependencies) = postProject
+		{38E47D31-F58D-490D-B6DD-18C3165E7F61} = {38E47D31-F58D-490D-B6DD-18C3165E7F61}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xxuvlib", "xxuvlib\xxuvlib.vcxproj", "{38E47D31-F58D-490D-B6DD-18C3165E7F61}"
 EndProject
@@ -13,7 +16,36 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "gen_library", "gen_library\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pkggen_template_PKG", "pkggen_template_PKG\pkggen_template_PKG.csproj", "{82112FE9-6A59-4F6D-A295-D4C7C039A977}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server_login", "server_login\server_login.csproj", "{7FF2161F-F699-48A0-9F48-BD316C0BA1A6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{38E47D31-F58D-490D-B6DD-18C3165E7F61} = {38E47D31-F58D-490D-B6DD-18C3165E7F61}
+		{6DD7A5A2-3411-4ECB-A811-2421BE960743} = {6DD7A5A2-3411-4ECB-A811-2421BE960743}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server_db", "server_db\server_db.csproj", "{F936E635-542C-42E1-9D13-5081DDD79729}"
+	ProjectSection(ProjectDependencies) = postProject
+		{38E47D31-F58D-490D-B6DD-18C3165E7F61} = {38E47D31-F58D-490D-B6DD-18C3165E7F61}
+		{6DD7A5A2-3411-4ECB-A811-2421BE960743} = {6DD7A5A2-3411-4ECB-A811-2421BE960743}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server_lobby", "server_lobby\server_lobby.csproj", "{2A385E54-BA3F-40D3-938D-25C5BB38FA79}"
+	ProjectSection(ProjectDependencies) = postProject
+		{38E47D31-F58D-490D-B6DD-18C3165E7F61} = {38E47D31-F58D-490D-B6DD-18C3165E7F61}
+		{6DD7A5A2-3411-4ECB-A811-2421BE960743} = {6DD7A5A2-3411-4ECB-A811-2421BE960743}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server_game1", "server_game1\server_game1.csproj", "{E4521097-A846-4617-A199-D0F456825A53}"
+	ProjectSection(ProjectDependencies) = postProject
+		{38E47D31-F58D-490D-B6DD-18C3165E7F61} = {38E47D31-F58D-490D-B6DD-18C3165E7F61}
+		{6DD7A5A2-3411-4ECB-A811-2421BE960743} = {6DD7A5A2-3411-4ECB-A811-2421BE960743}
+	EndProjectSection
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "pkg", "pkg\pkg.shproj", "{F2492309-7477-4E45-88A1-811A76FA5B5C}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		pkg\pkg.projitems*{f2492309-7477-4e45-88a1-811a76fa5b5c}*SharedItemsImports = 13
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Release|x64 = Release|x64
@@ -39,6 +71,22 @@ Global
 		{82112FE9-6A59-4F6D-A295-D4C7C039A977}.Debug|x64.Build.0 = Debug|x64
 		{82112FE9-6A59-4F6D-A295-D4C7C039A977}.Release|x64.ActiveCfg = Release|x64
 		{82112FE9-6A59-4F6D-A295-D4C7C039A977}.Release|x64.Build.0 = Release|x64
+		{7FF2161F-F699-48A0-9F48-BD316C0BA1A6}.Debug|x64.ActiveCfg = Debug|x64
+		{7FF2161F-F699-48A0-9F48-BD316C0BA1A6}.Debug|x64.Build.0 = Debug|x64
+		{7FF2161F-F699-48A0-9F48-BD316C0BA1A6}.Release|x64.ActiveCfg = Release|x64
+		{7FF2161F-F699-48A0-9F48-BD316C0BA1A6}.Release|x64.Build.0 = Release|x64
+		{F936E635-542C-42E1-9D13-5081DDD79729}.Debug|x64.ActiveCfg = Debug|x64
+		{F936E635-542C-42E1-9D13-5081DDD79729}.Debug|x64.Build.0 = Debug|x64
+		{F936E635-542C-42E1-9D13-5081DDD79729}.Release|x64.ActiveCfg = Release|x64
+		{F936E635-542C-42E1-9D13-5081DDD79729}.Release|x64.Build.0 = Release|x64
+		{2A385E54-BA3F-40D3-938D-25C5BB38FA79}.Debug|x64.ActiveCfg = Debug|x64
+		{2A385E54-BA3F-40D3-938D-25C5BB38FA79}.Debug|x64.Build.0 = Debug|x64
+		{2A385E54-BA3F-40D3-938D-25C5BB38FA79}.Release|x64.ActiveCfg = Release|x64
+		{2A385E54-BA3F-40D3-938D-25C5BB38FA79}.Release|x64.Build.0 = Release|x64
+		{E4521097-A846-4617-A199-D0F456825A53}.Debug|x64.ActiveCfg = Debug|x64
+		{E4521097-A846-4617-A199-D0F456825A53}.Debug|x64.Build.0 = Debug|x64
+		{E4521097-A846-4617-A199-D0F456825A53}.Release|x64.ActiveCfg = Release|x64
+		{E4521097-A846-4617-A199-D0F456825A53}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
