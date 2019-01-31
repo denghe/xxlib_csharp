@@ -4,12 +4,19 @@ using TemplateLibrary;
 [TypeIdMappings]
 interface ITypeIdMappings
 {
-    Account _6 { get; }
+    Generic.Success _3 { get; }
 
-    Player _3 { get; }
+    Generic.Error _4 { get; }
 
-    Scene _4 { get; }
+    Generic.ServerInfo _5 { get; }
 
-    List<Ref<Player>> _5 { get; }
+    Generic.UserInfo _6 { get; }
 
+    Login_DB.Auth _7 { get; }
+
+    DB_Login.Auth_Success _8 { get; }
+
+    Client_Login.Auth _9 { get; }
+
+    Login_Client.AuthSuccess _10 { get; }
 }

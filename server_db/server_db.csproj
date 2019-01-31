@@ -50,6 +50,8 @@
     <Compile Include="..\pkg\PKG_mysql.cs">
       <Link>PKG_mysql.cs</Link>
     </Compile>
+    <Compile Include="DbService_Login.cs" />
+    <Compile Include="DbService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
