@@ -183,46 +183,9 @@ XXUVLIB_API int xxuv_loop_alive(uv_loop_t* p) noexcept
 
 
 
-#ifdef __APPLE__
-#include <unistd.h>
-#endif
-
 XXUVLIB_API int xxuv_ip4_addr(const char* ipv4, int port, sockaddr* addr) noexcept
 {
-#ifdef __APPLE__
-	// 解决 client ipv6 only 网络问题
-	addrinfo hints, *res, *res0;
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = PF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_DEFAULT;
-    
-    char portbuf[16];
-    sprintf(portbuf, "%d", port);
-    
-    if (auto r = getaddrinfo(ipv4, portbuf, &hints, &res0)) return r;
-	for (res = res0; res; res = res->ai_next)
-	{
-		auto s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		if (s < 0) continue;
-		close(s);
-		memcpy(addr, res->ai_addr, res->ai_addrlen);
-		freeaddrinfo(res0);
-
-		char ipBuf[128];
-		if (addr->sin6_family == AF_INET6)
-			uv_ip6_name(addr, ipBuf, 128);
-		else
-			uv_ip4_name((sockaddr_in*)addr, ipBuf, 128);
-		printf("fill ip = %s\n", ipBuf);
-
-		return 0;
-	}
-	freeaddrinfo(res0);
-	return -1;
-#else
 	return uv_ip4_addr(ipv4, port, (sockaddr_in*)addr);
-#endif
 }
 XXUVLIB_API int xxuv_ip6_addr(const char* ipv6, int port, sockaddr_in6* addr) noexcept
 {
@@ -272,24 +235,16 @@ XXUVLIB_API int xxuv_write(uv_write_t* req, uv_stream_t* stream, const uv_buf_t 
 
 XXUVLIB_API int xxuv_write_(uv_stream_t* stream, char const* inBuf, unsigned int offset, unsigned int len) noexcept
 {
-	struct uv_write_t_ex
+	struct uv_write_t_ex : uv_write_t
 	{
-		uv_write_t req;
 		uv_buf_t buf;
 	};
-	auto req = Alloc<uv_write_t_ex>();
-	auto buf = (char*)Alloc(len);
-	memcpy(buf, inBuf + offset, len);
-	req->buf = uv_buf_init(buf, (uint32_t)len);
-	return uv_write((uv_write_t*)req, stream, &req->buf, 1, [](uv_write_t *req, int status)
-	{
-		//if (status) fprintf(stderr, "Write error: %s\n", uv_strerror(status));
-		// todo: 如果 status 非0, 有可能是网络发生变化, 比如 ios 下可能切换 wifi 4g 导致 ipv4/6 协议栈变化,
-		// 此时需要想办法通知上层代码这个事情, 以便重新 getaddrinfo 和重建上下文 ( close + init )
-
-		auto *wr = (uv_write_t_ex*)req;
-		Free(wr->buf.base);
-		Free(wr);
+	auto req = (uv_write_t_ex*)malloc(sizeof(uv_write_t_ex) + len);
+	memcpy(req + 1, inBuf + offset, len);
+	req->buf.base = (char*)(req + 1);
+	req->buf.len = decltype(uv_buf_t::len)(len);
+	return uv_write(req, stream, &req->buf, 1, [](uv_write_t *req, int status) {
+		free(req);
 	});
 }
 
@@ -370,24 +325,17 @@ XXUVLIB_API int xxuv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, const uv_buf
 
 XXUVLIB_API int xxuv_udp_send_(uv_udp_t* handle, char const* inBuf, unsigned int offset, unsigned int len, const struct sockaddr* addr) noexcept
 {
-	struct uv_udp_send_t_ex
+	struct uv_udp_send_t_ex : uv_write_t
 	{
-		uv_udp_send_t req;
 		uv_buf_t buf;
 	};
-	auto req = Alloc<uv_udp_send_t_ex>();
-	auto buf = (char*)Alloc(len);
-	memcpy(buf, inBuf + offset, len);
-	req->buf = uv_buf_init(buf, (uint32_t)len);
+	auto req = (uv_udp_send_t_ex*)malloc(sizeof(uv_udp_send_t_ex) + len);
+	memcpy(req + 1, inBuf + offset, len);
+	req->buf.base = (char*)(req + 1);
+	req->buf.len = decltype(uv_buf_t::len)(len);
 	return uv_udp_send((uv_udp_send_t*)req, handle, &req->buf, 1, addr, [](uv_udp_send_t* req, int status)
 	{
-		//if (status) fprintf(stderr, "Write error: %s\n", uv_strerror(status));
-		// todo: 如果 status 非0, 有可能是网络发生变化, 比如 ios 下可能切换 wifi 4g 导致 ipv4/6 协议栈变化,
-		// 此时需要想办法通知上层代码这个事情, 以便重新 getaddrinfo 和重建上下文 ( close + init )
-
-		auto *wr = (uv_udp_send_t_ex*)req;
-		Free(wr->buf.base);
-		Free(wr);
+		free(req);
 	});
 }
 XXUVLIB_API size_t xxuv_udp_get_send_queue_size(const uv_udp_t* udp) noexcept
