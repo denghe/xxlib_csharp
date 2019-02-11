@@ -611,7 +611,7 @@ namespace xx
         }
 
         // 增强的 SendRequest 实现 断线时 立即发起相关 rpc 超时回调. 封装了解包操作. 
-        public void SendRequestEx(xx.IObject pkg, Action<uint, IObject> cb, int interval = 0)
+        public void SendRequestEx(xx.IObject pkg, Action<IObject> cb, int interval = 0)
         {
             var serial = SendRequest(pkg, (uint ser, BBuffer bb) =>
             {
@@ -621,7 +621,7 @@ namespace xx
                 {
                     inPkg = bb.TryReadRoot<xx.IObject>();
                 }
-                cb(ser, inPkg); // call 原始 lambda
+                cb(inPkg); // call 原始 lambda
             }, interval);
 
             if (rpcSerials == null)

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using xx;
 
 
 public static class Program
@@ -14,7 +13,7 @@ public static class Program
         PKG.AllTypes.Register();
 
         // 创建 libuv 运行核心循环
-        var loop = new UvLoop();
+        var loop = new xx.UvLoop();
 
         // 初始化 rpc 管理器, 设定超时参数: 精度(ms), 默认超时 ticks( duration = 精度ms * ticks )
         loop.InitRpcManager(1000, 5);
@@ -31,36 +30,36 @@ public static class Program
 }
 
 // 登陆服务主体
-public class LoginService : UvLoop
+public class LoginService
 {
     // 监听器
-    public UvTcpListener listener;
+    public xx.UvTcpListener listener;
 
     // 连接器 for db server
-    public UvTcpClient dbClient;
+    public xx.UvTcpClient dbClient;
 
     // 计时器 for 连接器 断线重连
-    public UvTimer timer;
+    public xx.UvTimer timer;
 
-    public LoginService(UvLoop loop)
+    public LoginService(xx.UvLoop loop)
     {
-        listener = new UvTcpListener(loop);
+        listener = new xx.UvTcpListener(loop);
         listener.Bind("0.0.0.0", 10001);
         listener.Listen();
         listener.OnAccept = OnAccept;
 
-        dbClient = new UvTcpClient(loop);
+        dbClient = new xx.UvTcpClient(loop);
         dbClient.SetAddress("127.0.0.1", 10000);
         dbClient.OnConnect = OnDbClientConnect;
 
         // 延迟 500ms 后每 500ms 触发一次
-        timer = new UvTimer(loop, 500, 500, OnTimerFire);
+        timer = new xx.UvTimer(loop, 500, 500, OnTimerFire);
     }
 
     public void OnTimerFire()
     {
         // 如果已断线就重连
-        if (dbClient.state == UvTcpStates.Disconnected)
+        if (dbClient.state == xx.UvTcpStates.Disconnected)
         {
             dbClient.Connect();
         }
@@ -75,58 +74,68 @@ public class LoginService : UvLoop
         dbClient.Send(new PKG.Generic.ServerInfo { name = "login" });
     }
 
-    public void OnAccept(UvTcpPeer peer)
+    public void OnAccept(xx.UvTcpPeer peer)
     {
-        peer.OnReceivePackage = (bbRecv) =>
+        peer.OnReceiveRequest = (serial, bbRecv) =>
         {
-            // todo: 放置解析 bb 内容的代码, 协议转换
-
-            // 模拟收到了校验包
-            var recv = new PKG.Client_Login.Auth { username = "a", password = "b" };
-
-            if (!dbClient.alive)
+            // 试着解码. 失败直接断开
+            var recv = bbRecv.TryReadRoot<xx.IObject>();
+            if (recv == null)
             {
-                // todo: 用原先的协议发回 错误提示
-                //peer.SendBytes()
+                peer.Dispose();
+                return;
+            }
+
+            // 分发到处理函数
+            switch (recv)
+            {
+                case PKG.Client_Login.Auth a:
+                    Handle_Auth(serial, a, peer);
+                    break;
+                default:
+                    peer.Dispose();
+                    return;
+            }
+
+        };
+    }
+
+    public void Handle_Auth(uint serial, PKG.Client_Login.Auth a, xx.UvTcpPeer peer)
+    {
+        // 如果还没有连上
+        if (!dbClient.alive)
+        {
+            peer.SendResponse(serial, new PKG.Generic.Error { number = -1, text = "dbClient disconnected." });
+            return;
+        }
+
+        // 向 db 服务发起问询
+        dbClient.SendRequestEx(new PKG.Login_DB.Auth { username = a.username, password = a.password }, recv =>
+        {
+            // 如果等到 db 返回结果到达时 peer 已经断开, 则后续都不用继续做了
+            if (!peer.alive) return;
+
+            // rpc 超时
+            if (recv == null)
+            {
+                peer.SendResponse(serial, new PKG.Generic.Error { number = -2, text = "dbClient Auth timeout." });
             }
             else
             {
-                // 向 db 服务发起问询
-                dbClient.SendRequestEx(new PKG.Login_DB.Auth { username = recv.username, password = recv.password }, (serial, pkg) =>
+                switch (recv)
                 {
-                    // todo: 原先的协议的回发数据容器
-                    // byte[] rtv
-
-                    // rpc 超时
-                    if (pkg == null)
-                    {
-                        // todo: 构造回发数据: rpc 超时
-                    }
-                    else
-                    {
-                        switch (pkg)
-                        {
-                            case PKG.Generic.Error o:
-                                // todo: 构造回发数据: o.number & text
-                                break;
-                            case PKG.DB_Login.Auth_Success o:
-                                
-                                // todo: 通过 lobbyClient 继续 SendRequestEx( PKG.Login_Lobby.Enter ). 在收到 Lobby 返回的 EnterSuccess 之后 通过 peer 发送 lobby 生成的 token
-
-                                break;
-                            default:
-                                // todo: 构造回发数据: 未处理的包 pkg.ToString
-                                break;
-                        }
-                    }
-                    // 判断与客户端的连接是否依然有效
-                    if (peer.alive)
-                    {
-                        // todo: 用原先的协议发回 rtv 包
-                        //peer.SendBytes(rtv)
-                    }
-                });
+                    case PKG.Generic.Error o:
+                        peer.SendResponse(serial, new PKG.Generic.Error { number = -3, text = "dbClient Auth Result: " + o.ToString() });
+                        break;
+                    case PKG.DB_Login.Auth_Success o:
+                        // todo: 通过 lobbyClient 继续 SendRequestEx( PKG.Login_Lobby.Enter ). 在收到 Lobby 返回的 EnterSuccess 之后 通过 peer 发送 lobby 生成的 token
+                        peer.SendResponse(serial, new PKG.Generic.Success { });
+                        break;
+                    default:
+                        peer.SendResponse(serial, new PKG.Generic.Error { number = -3, text = "dbClient Auth Result: unhandled package " + recv.ToString() });
+                        break;
+                }
             }
-        };
+        });
     }
 }

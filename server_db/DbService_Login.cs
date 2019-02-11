@@ -45,7 +45,7 @@ public partial class DbService
         };
     }
 
-    public int Handle_Login_Auth(uint serial, PKG.Login_DB.Auth a, xx.UvTcpPeer peer)
+    public void Handle_Login_Auth(uint serial, PKG.Login_DB.Auth a, xx.UvTcpPeer peer)
     {
         // 参数合法性初步检查
         if (string.IsNullOrEmpty(a.username) || a.password == null)
@@ -95,6 +95,5 @@ public partial class DbService
                 }
             });
         }).Start();
-        return 0;
     }
 }
