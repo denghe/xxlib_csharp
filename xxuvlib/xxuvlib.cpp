@@ -33,13 +33,6 @@ static void* Alloc(size_t size, void* ud = nullptr)
 	return &p[1];
 }
 
-template<typename T>
-static T* Alloc()
-{
-	return (T*)Alloc(sizeof(T));
-}
-
-
 // 还原真实指针, 释放
 static void Free(void* p) noexcept
 {
@@ -243,7 +236,8 @@ XXUVLIB_API int xxuv_write_(uv_stream_t* stream, char const* inBuf, unsigned int
 	memcpy(req + 1, inBuf + offset, len);
 	req->buf.base = (char*)(req + 1);
 	req->buf.len = decltype(uv_buf_t::len)(len);
-	return uv_write(req, stream, &req->buf, 1, [](uv_write_t *req, int status) {
+	return uv_write(req, stream, &req->buf, 1, [](uv_write_t *req, int status)
+	{
 		free(req);
 	});
 }
