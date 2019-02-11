@@ -41,7 +41,7 @@ static void Free(void* p) noexcept
 
 static void AllocCB(uv_handle_t* h, size_t suggested_size, uv_buf_t* buf)
 {
-	buf->base = (char*)malloc(suggested_size);
+	buf->base = (char*)Alloc(suggested_size);
 	buf->len = decltype(buf->len)(suggested_size);
 }
 
@@ -232,13 +232,13 @@ XXUVLIB_API int xxuv_write_(uv_stream_t* stream, char const* inBuf, unsigned int
 	{
 		uv_buf_t buf;
 	};
-	auto req = (uv_write_t_ex*)malloc(sizeof(uv_write_t_ex) + len);
+	auto req = (uv_write_t_ex*)Alloc(sizeof(uv_write_t_ex) + len);
 	memcpy(req + 1, inBuf + offset, len);
 	req->buf.base = (char*)(req + 1);
 	req->buf.len = decltype(uv_buf_t::len)(len);
 	return uv_write(req, stream, &req->buf, 1, [](uv_write_t *req, int status)
 	{
-		free(req);
+		Free(req);
 	});
 }
 
@@ -323,13 +323,13 @@ XXUVLIB_API int xxuv_udp_send_(uv_udp_t* handle, char const* inBuf, unsigned int
 	{
 		uv_buf_t buf;
 	};
-	auto req = (uv_udp_send_t_ex*)malloc(sizeof(uv_udp_send_t_ex) + len);
+	auto req = (uv_udp_send_t_ex*)Alloc(sizeof(uv_udp_send_t_ex) + len);
 	memcpy(req + 1, inBuf + offset, len);
 	req->buf.base = (char*)(req + 1);
 	req->buf.len = decltype(uv_buf_t::len)(len);
 	return uv_udp_send((uv_udp_send_t*)req, handle, &req->buf, 1, addr, [](uv_udp_send_t* req, int status)
 	{
-		free(req);
+		Free(req);
 	});
 }
 XXUVLIB_API size_t xxuv_udp_get_send_queue_size(const uv_udp_t* udp) noexcept

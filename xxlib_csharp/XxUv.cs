@@ -671,7 +671,7 @@ namespace xx
             {
                 tcp.ReceiveImpl(bufPtr, len);
             }
-            UvInterop.xxuv_pool_free(loopPtr, bufPtr);
+            UvInterop.xxuv_free(bufPtr);
             if (len < 0)
             {
                 tcp.DisconnectImpl();
@@ -1520,9 +1520,6 @@ namespace xx
 
         [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
         public static extern void xxuv_free(IntPtr p);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void xxuv_pool_free(IntPtr loop, IntPtr p);
 
 
 

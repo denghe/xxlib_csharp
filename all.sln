@@ -42,6 +42,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server_game1", "server_game
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "pkg", "pkg\pkg.shproj", "{F2492309-7477-4E45-88A1-811A76FA5B5C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test_echo_server", "test_echo_server\test_echo_server.csproj", "{24831D04-BB73-4767-90FC-860825D95C78}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test_echo_client", "test_echo_client\test_echo_client.csproj", "{43AD581B-49B8-4D12-9CAE-085450F08362}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		pkg\pkg.projitems*{f2492309-7477-4e45-88a1-811a76fa5b5c}*SharedItemsImports = 13
@@ -87,6 +91,14 @@ Global
 		{E4521097-A846-4617-A199-D0F456825A53}.Debug|x64.Build.0 = Debug|x64
 		{E4521097-A846-4617-A199-D0F456825A53}.Release|x64.ActiveCfg = Release|x64
 		{E4521097-A846-4617-A199-D0F456825A53}.Release|x64.Build.0 = Release|x64
+		{24831D04-BB73-4767-90FC-860825D95C78}.Debug|x64.ActiveCfg = Debug|x64
+		{24831D04-BB73-4767-90FC-860825D95C78}.Debug|x64.Build.0 = Debug|x64
+		{24831D04-BB73-4767-90FC-860825D95C78}.Release|x64.ActiveCfg = Release|x64
+		{24831D04-BB73-4767-90FC-860825D95C78}.Release|x64.Build.0 = Release|x64
+		{43AD581B-49B8-4D12-9CAE-085450F08362}.Debug|x64.ActiveCfg = Debug|x64
+		{43AD581B-49B8-4D12-9CAE-085450F08362}.Debug|x64.Build.0 = Debug|x64
+		{43AD581B-49B8-4D12-9CAE-085450F08362}.Release|x64.ActiveCfg = Release|x64
+		{43AD581B-49B8-4D12-9CAE-085450F08362}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
