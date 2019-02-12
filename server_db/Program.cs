@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 public static class Program
 {
@@ -20,8 +16,9 @@ public static class Program
         // 创建数据库服务实例
         var dbService = new DbService(loop);
 
+        Console.WriteLine("server_db running...");
+
         // 开始运行
         loop.Run();
     }
 }
-

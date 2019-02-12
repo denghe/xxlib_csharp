@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 
 public static class Program
 {
@@ -23,6 +18,8 @@ public static class Program
 
         // 创建登陆服务实例
         var loginService = new LoginService(loop);
+
+        Console.WriteLine("server_login running...");
 
         // 开始运行
         loop.Run();
@@ -70,12 +67,16 @@ public class LoginService
         // 没连上就退出
         if (status != 0) return;
 
+        Console.WriteLine("connected to server_db");
+
         // 连上后先发送身份认证包
         dbClient.Send(new PKG.Generic.ServerInfo { name = "login" });
     }
 
     public void OnAccept(xx.UvTcpPeer peer)
     {
+        Console.WriteLine("client peer [" + peer.ip + "] accepted.");
+
         peer.OnReceiveRequest = (serial, bbRecv) =>
         {
             // 试着解码. 失败直接断开
@@ -85,6 +86,8 @@ public class LoginService
                 peer.Dispose();
                 return;
             }
+
+            Console.WriteLine("client peer " + peer.ip + " recv: " + recv);
 
             // 分发到处理函数
             switch (recv)
@@ -96,7 +99,6 @@ public class LoginService
                     peer.Dispose();
                     return;
             }
-
         };
     }
 
@@ -125,7 +127,7 @@ public class LoginService
                 switch (recv)
                 {
                     case PKG.Generic.Error o:
-                        peer.SendResponse(serial, new PKG.Generic.Error { number = -3, text = "dbClient Auth Result: " + o.ToString() });
+                        peer.SendResponse(serial, o);
                         break;
                     case PKG.DB_Login.Auth_Success o:
                         // todo: 通过 lobbyClient 继续 SendRequestEx( PKG.Login_Lobby.Enter ). 在收到 Lobby 返回的 EnterSuccess 之后 通过 peer 发送 lobby 生成的 token

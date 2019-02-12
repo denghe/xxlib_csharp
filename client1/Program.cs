@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 class Program
 {
@@ -16,24 +12,45 @@ class Program
         client.SetAddress("127.0.0.1", 10001);
         client.OnConnect = status =>
         {
-            if (status != 0) return;
+            if (status != 0)
+            {
+                Console.WriteLine("connect to server_login failed. status = " + status);
+                return;
+            }
+            Console.WriteLine("connected.");
 
-            client.SendRequestEx(new PKG.Client_Login.Auth { username = "a", password = "a" }, recv =>
+            var a = new PKG.Client_Login.Auth { username = "abc", password = "a" };
+            if (System.Environment.TickCount % 5 == 0)
+            {
+                a.password = "123";
+            }
+            client.SendRequestEx(a, recv =>
             {
                 if (recv == null)
                 {
                     Console.WriteLine("recv == null( timeout )");
+                    return;
                 }
-                else
+                Console.WriteLine("PKG.Client_Login.Auth recv: " + recv);
+
+                switch (recv)
                 {
-                    Console.WriteLine("recv: " + recv);
+                    case PKG.Generic.Error o:
+                        client.Disconnect();
+                        break;
+                    case PKG.Generic.Success o:
+                        break;
+                    default:
+                        break;
                 }
+
             });
         };
-        var timer = new xx.UvTimer(loop, 500, 500, () =>
+        var timer = new xx.UvTimer(loop, 1000, 2000, () =>
         {
             if (client.state == xx.UvTcpStates.Disconnected)
             {
+                Console.WriteLine("connect to server_login...");
                 client.Connect();
             }
         });

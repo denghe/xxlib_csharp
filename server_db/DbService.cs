@@ -24,6 +24,8 @@ public partial class DbService
         listener.Bind("0.0.0.0", 10000);
         listener.Listen();
         listener.OnAccept = OnAccept;
+
+        dispatcher = new xx.UvAsync(loop);
     }
 
     public void OnAccept(xx.UvTcpPeer peer)

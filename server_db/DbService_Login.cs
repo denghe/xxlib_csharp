@@ -11,7 +11,7 @@ public partial class DbService
 {
     public void SetLoginPeer(xx.UvTcpPeer peer)
     {
-        if (loginPeer.alive)
+        if (loginPeer != null && loginPeer.alive)
         {
             loginPeer.Send(new PKG.Generic.Error { number = -1, text = "another login server connected." });
             loginPeer.DelayRelease(1);
@@ -32,6 +32,8 @@ public partial class DbService
                 return;
             }
 
+            Console.WriteLine("recv server_login package: " + pkg);
+
             // 根据请求来分发到处理函数
             switch (pkg)
             {
@@ -43,6 +45,8 @@ public partial class DbService
                     break;
             }
         };
+
+        Console.WriteLine("server_login connected.");
     }
 
     public void Handle_Login_Auth(uint serial, PKG.Login_DB.Auth a, xx.UvTcpPeer peer)
