@@ -76,49 +76,60 @@ class Program
         //    }
         //    Console.WriteLine(sw.ElapsedMilliseconds);
         //}
+        for (int k = 0; k < 10; ++k)
         {
-            var pb = new PinnedBuffer(new byte[1024 * 1024 * 1024]);
-            var bytes = (byte*)pb.ptr;
-            var d = 0x1234567812345678u;
-            for (int j = 0; j < 8; j++)
             {
-                *(ulong*)&bytes[16 * j + j] = d;
-            }
-            var sw = Stopwatch.StartNew();
-            for (int i = 0; i < 100000000; i++)
-            {
-                for (int j = 0; j < 8; j++)
+                var pb = new PinnedBuffer(new byte[1024 * 1024 * 1024]);
+                var bytes = (byte*)pb.ptr;
+                var d = 0x1234567812345678u;
+                //for (int j = 0; j < 8; j++)
                 {
-                    d = *(ulong*)&bytes[16 * j + j];
+                    //*(ulong*)&bytes[16 * j + j] = d;
+                    *(ulong*)&bytes[1] = d;
                 }
-            }
-            Console.WriteLine(sw.ElapsedMilliseconds);
-        }
-        {
-            var pb = new PinnedBuffer(new byte[1024 * 1024 * 1024]);
-            var bytes = (byte*)pb.ptr;
-            var d = 0x1234567812345678u;
-            for (int j = 0; j < 8; j++)
-            {
-                *(ulong*)&bytes[16 * j + j] = d;
-            }
-            var sw = Stopwatch.StartNew();
-            for (int i = 0; i < 100000000; i++)
-            {
-                for (int j = 0; j < 8; j++)
+                var sw = Stopwatch.StartNew();
+                for (int i = 0; i < 100000000; i++)
                 {
-                    var idx = 16 * j + j;
-                    d = (ulong)(bytes[idx + 0])
-                        + ((ulong)(bytes[idx + 1]) << 8)
-                        + ((ulong)(bytes[idx + 2]) << 16)
-                        + ((ulong)(bytes[idx + 3]) << 24)
-                        + ((ulong)(bytes[idx + 4]) << 32)
-                        + ((ulong)(bytes[idx + 5]) << 40)
-                        + ((ulong)(bytes[idx + 6]) << 48)
-                        + ((ulong)(bytes[idx + 7]) << 56);
-                }                                 
+                    //for (int j = 0; j < 8; j++)
+                    {
+                        //var idx = 16 * j + j;
+                        //d = *(ulong*)&bytes[idx];
+                        //fixed (byte* buf = &pb.data[1])
+                        var buf = bytes + 1;
+                        {
+                            d = *(ulong*)buf;
+                        }
+
+                    }
+                }
+                Console.WriteLine(sw.ElapsedMilliseconds);
             }
-            Console.WriteLine(sw.ElapsedMilliseconds);
+            {
+                var pb = new PinnedBuffer(new byte[1024 * 1024 * 1024]);
+                var bytes = (byte*)pb.ptr;
+                var d = 0x1234567812345678u;
+                //for (int j = 0; j < 8; j++)
+                {
+                    //*(ulong*)&bytes[16 * j + j] = d;
+                    *(ulong*)&bytes[1] = d;
+                }
+                var sw = Stopwatch.StartNew();
+                for (int i = 0; i < 100000000; i++)
+                {
+                    //for (int j = 0; j < 8; j++)
+                    {
+                        //var idx = 16 * j + j;
+                        //fixed (byte* buf = &pb.data[1])
+                        var buf = bytes + 1;
+                        {
+                            int num3 = (((buf[0] << 0x18) | (buf[1] << 0x10)) | (buf[2] << 8)) | buf[3];
+                            int num4 = (((buf[4] << 0x18) | (buf[5] << 0x10)) | (buf[6] << 8)) | buf[7];
+                            d = (ulong)(num4 | num3 << 0x20);
+                        }
+                    }
+                }
+                Console.WriteLine(sw.ElapsedMilliseconds);
+            }
         }
 
     }
