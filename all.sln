@@ -48,6 +48,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test_echo_client", "test_ec
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "client1", "client1\client1.csproj", "{9C0B6154-008B-4B2D-9FD8-7D0847A8F313}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test_unsafe1", "test_unsafe1\test_unsafe1.csproj", "{EE959052-5EC3-492F-AE1A-AC8AE42B9447}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		pkg\pkg.projitems*{f2492309-7477-4e45-88a1-811a76fa5b5c}*SharedItemsImports = 13
@@ -105,6 +107,10 @@ Global
 		{9C0B6154-008B-4B2D-9FD8-7D0847A8F313}.Debug|x64.Build.0 = Debug|x64
 		{9C0B6154-008B-4B2D-9FD8-7D0847A8F313}.Release|x64.ActiveCfg = Release|x64
 		{9C0B6154-008B-4B2D-9FD8-7D0847A8F313}.Release|x64.Build.0 = Release|x64
+		{EE959052-5EC3-492F-AE1A-AC8AE42B9447}.Debug|x64.ActiveCfg = Debug|x64
+		{EE959052-5EC3-492F-AE1A-AC8AE42B9447}.Debug|x64.Build.0 = Debug|x64
+		{EE959052-5EC3-492F-AE1A-AC8AE42B9447}.Release|x64.ActiveCfg = Release|x64
+		{EE959052-5EC3-492F-AE1A-AC8AE42B9447}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
