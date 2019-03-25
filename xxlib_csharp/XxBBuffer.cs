@@ -102,7 +102,7 @@ namespace xx
         #region ushort
         public void Write(ushort v)
         {
-            if (dataLen + 2 > buf.Length)
+            if (dataLen + 3 > buf.Length)
             {
                 Reserve(dataLen + 3);
             }
@@ -246,6 +246,13 @@ namespace xx
             Bit7Read(ref tmp, buf, ref offset, dataLen);
             v = ZigZagDecode(tmp);
         }
+        public bool TryRead(ref int v)
+        {
+            uint tmp = 0;
+            if (!Bit7TryRead(ref tmp, buf, ref offset, dataLen)) return false;
+            v = ZigZagDecode(tmp);
+            return true;
+        }
         public void Write(int? v)
         {
             if (v.HasValue)
@@ -278,9 +285,9 @@ namespace xx
         #region ulong
         public void Write(ulong v)
         {
-            if (dataLen + 9 > buf.Length)
+            if (dataLen + 10 > buf.Length)
             {
-                Reserve(dataLen + 9);
+                Reserve(dataLen + 10);
             }
             Bit7Write(buf, ref dataLen, v);
         }
@@ -320,9 +327,9 @@ namespace xx
         #region long
         public void Write(long v)
         {
-            if (dataLen + 9 > buf.Length)
+            if (dataLen + 10 > buf.Length)
             {
-                Reserve(dataLen + 9);
+                Reserve(dataLen + 10);
             }
             Bit7Write(buf, ref dataLen, ZigZagEncode(v));
         }
@@ -468,9 +475,9 @@ namespace xx
         }
         public void Write(double v)
         {
-            if (dataLen + 9 > buf.Length)
+            if (dataLen + 10 > buf.Length)
             {
-                Reserve(dataLen + 9);
+                Reserve(dataLen + 10);
             }
             WriteDirect(v);
         }
@@ -1131,148 +1138,79 @@ namespace xx
 
         public static long ZigZagDecode(ulong v) { return (long)(v >> 1) ^ (-(long)(v & 1)); }
 
-        // need ensure 3
-        public static void Bit7Write(byte[] buf, ref int offset, ushort v)
-        {
-            Lab1:
-            byte b7 = (byte)v;
-            v >>= 7;
-            if (v > 0)
-            {
-                buf[offset++] = (byte)(b7 | (byte)0x80);
-                goto Lab1;
-            }
-            buf[offset++] = b7;
-        }
-
         // need ensure 5
         public static void Bit7Write(byte[] buf, ref int offset, uint v)
         {
-            Lab1:
-            byte b7 = (byte)v;
-            v >>= 7;
-            if (v > 0)
+            while (v >= 1 << 7)
             {
-                buf[offset++] = (byte)(b7 | (byte)0x80);
-                goto Lab1;
-            }
-            buf[offset++] = b7;
+                buf[offset++] = (byte)(v & 0x7fu | 0x80u);
+                v >>= 7;
+            };
+            buf[offset++] = (byte)v;
         }
 
-        // need ensure 9
+        // 同样的实现两份是考虑到 32位 cpu 用 ulong 操作没效率
+        // need ensure 10
         public static void Bit7Write(byte[] buf, ref int offset, ulong v)
         {
-            var idx8 = offset + 8;
-            Lab1:
-            byte b7 = (byte)v;
-            v >>= 7;
-            if (v > 0)
+            while (v >= 1 << 7)
             {
-                buf[offset++] = (byte)(b7 | (byte)0x80);
-                if (offset == idx8)
-                    buf[offset++] = (byte)v;
-                else
-                    goto Lab1;
-            }
-            else
-            {
-                buf[offset++] = b7;
-            }
+                buf[offset++] = (byte)(v & 0x7fu | 0x80u);
+                v >>= 7;
+            };
+            buf[offset++] = (byte)v;
         }
 
         public static void Bit7Read(ref ulong v, byte[] buf, ref int offset, int dataLen)
         {
-            var idx8 = offset + 8;
             v = 0;
-            int lshift = 0;
-            Lab1:
-            ulong b7 = buf[offset++];
-            if (b7 > 0x7F)
+            for (int shift = 0; shift < /*sizeof(T)*/8 * 8; shift += 7)
             {
-                if (offset < idx8)
-                {
-                    v |= (b7 & 0x7F) << lshift;
-                    lshift += 7;
-                    goto Lab1;
-                }
-                else
-                    v |= ((b7 & 0x7F) << lshift) | ((ulong)buf[offset++] << 28 << 28);
+                if (offset == dataLen) throw new OverflowException();
+                var b = buf[offset++];
+                v |= (b & 0x7Fu) << shift;
+                if ((b & 0x80) == 0) return;
             }
-            else
-                v |= b7 << lshift;
+            throw new OverflowException();
         }
 
         public static void Bit7Read(ref uint v, byte[] buf, ref int offset, int dataLen)
         {
-            var idx5 = offset + 5;
-            int lshift = 0;
             v = 0;
-            Lab1:
-            uint b7 = buf[offset++];
-            if (b7 > 0x7F)
+            for (int shift = 0; shift < /*sizeof(T)*/4 * 8; shift += 7)
             {
-                if (offset == idx5)
-                    throw new OverflowException();
-                v |= (b7 & 0x7F) << lshift;
-                lshift += 7;
-                goto Lab1;
+                if (offset == dataLen) throw new OverflowException();
+                var b = buf[offset++];
+                v |= (b & 0x7Fu) << shift;
+                if ((b & 0x80) == 0) return;
             }
-            else
-            {
-                if (offset == idx5 && b7 > 15)
-                    throw new OverflowException();
-                else
-                    v |= b7 << lshift;
-            }
-        }
-        public static bool Bit7TryRead(ref uint v, byte[] buf, ref int offset, int dataLen)
-        {
-            var idx5 = offset + 5;
-            int lshift = 0;
-            v = 0;
-            Lab1:
-            uint b7 = buf[offset++];
-            if (b7 > 0x7F)
-            {
-                if (offset == idx5)
-                    return false;
-                v |= (b7 & 0x7F) << lshift;
-                lshift += 7;
-                goto Lab1;
-            }
-            else
-            {
-                if (offset == idx5 && b7 > 15)
-                    return false;
-                else
-                    v |= b7 << lshift;
-            }
-            return true;
+            throw new OverflowException();
         }
 
         public static void Bit7Read(ref ushort v, byte[] buf, ref int offset, int dataLen)
         {
-            var idx3 = offset + 3;
-            int lshift = 0;
-            uint vv = 0;
-            Lab1:
-            uint b7 = buf[offset++];
-            if (b7 > 0x7F)
+            v = 0;
+            for (int shift = 0; shift < /*sizeof(T)*/2 * 8; shift += 7)
             {
-                if (offset == idx3)
-                    throw new OverflowException();
-                vv |= (b7 & 0x7F) << lshift;
-                lshift += 7;
-                goto Lab1;
+                if (offset == dataLen) throw new OverflowException();
+                var b = buf[offset++];
+                v |= (ushort)((b & 0x7Fu) << shift);
+                if ((b & 0x80) == 0) return;
             }
-            else
+            throw new OverflowException();
+        }
+
+        public static bool Bit7TryRead(ref uint v, byte[] buf, ref int offset, int dataLen)
+        {
+            v = 0;
+            for (int shift = 0; shift < /*sizeof(T)*/4 * 8; shift += 7)
             {
-                if (offset == idx3 && b7 > 3)
-                    throw new OverflowException();
-                else
-                    vv |= b7 << lshift;
+                if (offset == dataLen) return false;
+                var b = buf[offset++];
+                v |= (b & 0x7Fu) << shift;
+                if ((b & 0x80) == 0) return true;
             }
-            v = (ushort)vv;
+            return false;
         }
 
         public static void DumpAscII(ref StringBuilder s, byte[] buf, int offset, int len)

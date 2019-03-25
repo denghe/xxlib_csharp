@@ -1,4 +1,6 @@
-﻿using System;
+﻿// todo: 翻抄 c++ 最新版 uv 库的 rpc 部分结构?
+
+using System;
 using System.Runtime.InteropServices;
 #if NET_2_0 || NET_2_0_SUBSET
 #else
@@ -32,12 +34,6 @@ namespace xx
         public List<UvAsync> asyncs = new List<UvAsync>();
         public UvTimeoutManager timeoutManager;
         public UvRpcManager rpcManager;
-        public UvTimer udpTimer;
-        public uint udpTicks;
-        public byte[] udpRecvBuf = new byte[65536];
-        public GCHandle udpRecvBufHandle;
-        public IntPtr udpRecvBufHandlePtr;
-        public uint kcpInterval = 0;
 
         public IntPtr ptr;
         public GCHandle handle;
@@ -62,9 +58,6 @@ namespace xx
                     this.Unhandle(ref handle, ref handlePtr);
                     r.Throw();
                 }
-
-                udpRecvBufHandle = GCHandle.Alloc(udpRecvBuf, GCHandleType.Pinned);
-                udpRecvBufHandlePtr = udpRecvBufHandle.AddrOfPinnedObject();
             }
             catch (Exception ex)
             {
@@ -134,8 +127,6 @@ namespace xx
                 }
                 this.Free(ref ptr);
                 this.Unhandle(ref handle, ref handlePtr);
-                udpRecvBufHandle.Free();
-                udpRecvBufHandlePtr = IntPtr.Zero;
                 disposed = true;
             }
             //base.Dispose(disposing);
@@ -339,8 +330,8 @@ namespace xx
 
         public Action<BBuffer> OnReceivePackage;
 
-        // uint: 流水号
-        public Action<uint, BBuffer> OnReceiveRequest;
+        // int: 流水号
+        public Action<int, BBuffer> OnReceiveRequest;
 
         // 4个 int 代表 包起始offset, 含包头的总包长, 地址起始偏移, 地址长度( 方便替换地址并 memcpy )
         // BBuffer 的 offset 停在数据区起始位置
@@ -363,7 +354,7 @@ namespace xx
         protected BBuffer bbSend = new BBuffer();               // 复用
 
         // 用来放 serial 以便断线时及时发起 Request 超时回调
-        protected System.Collections.Generic.HashSet<uint> rpcSerials;
+        protected System.Collections.Generic.HashSet<int> rpcSerials;
 
         public override void BindTimeoutManager(UvTimeoutManager tm = null)
         {
@@ -381,12 +372,15 @@ namespace xx
         // 原始数据发送
         public abstract void SendBytes(byte[] data, int offset = 0, int len = 0);
 
-        // 包头 = 1字节掩码 + 数据长(2/4字节) + 地址(转发) + 流水号(RPC)
-        // 1字节掩码:
-        // ......XX :   00: 一般数据包      01: RPC请求包       10: RPC回应包
-        // .....X.. :   0: 2字节数据长       1: 4字节数据长
-        // ....X... :   0: 包头中不带地址    1: 带地址(长度由 XXXX.... 部分决定, 值需要+1)
 
+        // 原始数据发送之 BBuffer 版( 发送 BBuffer 中的数据 )
+        public void SendBytes(BBuffer bb)
+        {
+            SendBytes(bb.buf, 0, bb.dataLen);
+        }
+
+        // 包头 = 4字节数据长
+        // 数据 = serial + data
         // 基础收数据处理, 投递到事件函数
         public virtual void ReceiveImpl(IntPtr bufPtr, int len)
         {
@@ -395,91 +389,47 @@ namespace xx
             var buf = bbRecv.buf;                           // 方便使用
             int offset = 0;                                 // 提速
 
-            while (offset + 3 <= bbRecv.dataLen)            // 确保 3字节 包头长度
+            while (offset + 4 <= bbRecv.dataLen)           // ensure header len( 4 bytes )
             {
-                var typeId = buf[offset];                   // 读出头
-
-                var dataLen = buf[offset + 1] + (buf[offset + 2] << 8); // 读出包长
-                int headerLen = 3;
-                if ((typeId & 4) > 0)                       // 大包确保 5字节 包头长度
-                {
-                    if (offset + 5 > bbRecv.dataLen) break;
-                    headerLen = 5;
-                    dataLen += (buf[offset + 3] << 16) + (buf[offset + 4] << 24);   // 修正为大包包长
-                }
-
-
-                if (dataLen <= 0)                           // 数据异常判断
+                var dataLen = buf[offset + 1] + (buf[offset + 2] << 8) + (buf[offset + 3] << 16) + (buf[offset + 4] << 24);
+                if (dataLen <= 0 /* || len > maxLimit */)
                 {
                     DisconnectImpl();
                     return;
                 }
-                if (offset + headerLen + dataLen > bbRecv.dataLen) break;   // 确保数据长
-                var pkgOffset = offset;
-                offset += headerLen;
+                if (offset + 4 + dataLen > bbRecv.dataLen) break;   // 确保数据长
 
-
-                if ((typeId & 8) > 0)                       // 转发类数据包
+                offset += 4;
                 {
-                    var addrLen = typeId >> 4;
-                    var addrOffset = offset;
-                    var pkgLen = offset + dataLen - pkgOffset;
-                    offset += addrLen;
-
                     bbRecv.offset = offset;
-                    if (OnReceiveRoutingPackage != null) OnReceiveRoutingPackage(bbRecv, pkgOffset, pkgLen, addrOffset, addrLen);
-                    if (disposed || bbRecv.dataLen == 0) return;
+                    int serial = 0;
+                    if (!bbRecv.TryRead(ref serial))
+                    {
+                        DisconnectImpl();
+                        return;
+                    }
+
+                    if (serial == 0)    // recv push
+                    {
+                        if (OnReceivePackage != null) OnReceivePackage(bbRecv);
+                    }
+                    else if (serial < 0)    // recv request
+                    {
+                        if (OnReceiveRequest != null) OnReceiveRequest(-serial, bbRecv);
+                    }
+                    else    // recv response
+                    {
+                        loop.rpcManager.Callback(serial, bbRecv);
+                    }
+                    
+                    if (disposed || bbRecv.dataLen == 0) return;    // alive check at callback
                     if (Disconnected())
                     {
                         bbRecv.Clear();
                         return;
                     }
                 }
-                else
-                {
-                    bbRecv.offset = offset;
-                    var pkgType = typeId & 3;
-                    if (pkgType == 0)
-                    {
-                        if (OnReceivePackage != null) OnReceivePackage(bbRecv);
-                        if (disposed || bbRecv.dataLen == 0) return;
-                        if (Disconnected())
-                        {
-                            bbRecv.Clear();
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        uint serial = 0;
-                        if (!bbRecv.TryRead(ref serial))
-                        {
-                            DisconnectImpl();
-                            return;
-                        }
-                        if (pkgType == 1)
-                        {
-                            if (OnReceiveRequest != null) OnReceiveRequest(serial, bbRecv);
-                            if (disposed || bbRecv.dataLen == 0) return;
-                            if (Disconnected())
-                            {
-                                bbRecv.Clear();
-                                return;
-                            }
-                        }
-                        else if (pkgType == 2)
-                        {
-                            loop.rpcManager.Callback(serial, bbRecv);
-                            if (disposed || bbRecv.dataLen == 0) return;
-                            if (Disconnected())
-                            {
-                                bbRecv.Clear();
-                                return;
-                            }
-                        }
-                    }
-                }
-                offset += dataLen;                          // 继续处理剩余数据
+                offset += dataLen;
             }
             if (offset < bbRecv.dataLen)                    // 还有剩余的数据: 移到最前面
             {
@@ -488,132 +438,38 @@ namespace xx
             bbRecv.dataLen -= offset;
         }
 
-        // 原始数据发送之 BBuffer 版( 发送 BBuffer 中的数据 )
-        public void SendBytes(BBuffer bb)
-        {
-            SendBytes(bb.buf, 0, bb.dataLen);
-        }
 
-
-        // todo: SendRouting 系列从 C++ 那边同步过来
-
-
-
-        // 每个类一个包, 返回总字节数
-        public void Send(xx.IObject pkg)
+        // 发包( serial == 0: 推送, < 0: 请求, > 0: 回应 )
+        public void Send(xx.IObject pkg, int serial = 0)
         {
             if (disposed) throw new ObjectDisposedException("XxUvTcpBase");
-
             bbSend.Clear();
-            bbSend.Reserve(5);
-            bbSend.dataLen = 5;
+            bbSend.Reserve(1024);
+            bbSend.dataLen = 4;
+            bbSend.Write(serial);
             bbSend.WriteRoot(pkg);
             var p = bbSend.buf;
-            var dataLen = bbSend.dataLen - 5;
-            if (dataLen <= ushort.MaxValue)
-            {
-                p[2] = 0;
-                p[3] = (byte)dataLen;
-                p[4] = (byte)(dataLen >> 8);
-                SendBytes(p, 2, dataLen + 3);
-            }
-            else
-            {
-                p[0] = 0b00000100;
-                p[1] = (byte)dataLen;
-                p[2] = (byte)(dataLen >> 8);
-                p[3] = (byte)(dataLen >> 16);
-                p[4] = (byte)(dataLen >> 24);
-                SendBytes(p, 0, dataLen + 5);
-            }
+            var dataLen = bbSend.dataLen - 4;
+            p[0] = (byte)dataLen;
+            p[1] = (byte)(dataLen >> 8);
+            p[2] = (byte)(dataLen >> 16);
+            p[3] = (byte)(dataLen >> 24);
+            SendBytes(p, 0, dataLen + 4);
         }
 
+        // 发推送
+        public void SendPush(xx.IObject pkg)
+        {
+            Send(pkg);
+        }
 
-        // 发送 RPC 的请求包, 返回流水号
-        public uint SendRequest(xx.IObject pkg, Action<uint, BBuffer> cb, int interval = 0)
+        // 发请求
+        public void SendRequest(xx.IObject pkg, Action<IObject> cb, int interval = 0)
         {
             if (disposed) throw new ObjectDisposedException("XxUvTcpBase");
             if (loop.rpcManager == null) throw new NullReferenceException("forget InitRpcManager ?");
 
-            bbSend.Clear();
-            bbSend.Reserve(5);
-            bbSend.dataLen = 5;
-            var serial = loop.rpcManager.Register(cb, interval);                // 注册回调并得到流水号
-            bbSend.Write(serial);                                           // 在包前写入流水号
-            bbSend.WriteRoot(pkg);
-            var p = bbSend.buf;
-            var dataLen = bbSend.dataLen - 5;
-            if (dataLen <= ushort.MaxValue)
-            {
-                p[2] = 0b00000001;                                          // 这里标记包头为 Request 类型
-                p[3] = (byte)dataLen;
-                p[4] = (byte)(dataLen >> 8);
-                SendBytes(p, 2, dataLen + 3);
-            }
-            else
-            {
-                p[0] = 0b00000101;                                          // 这里标记包头为 Big + Request 类型
-                p[1] = (byte)dataLen;
-                p[2] = (byte)(dataLen >> 8);
-                p[3] = (byte)(dataLen >> 16);
-                p[4] = (byte)(dataLen >> 24);
-                SendBytes(p, 0, dataLen + 5);
-            }
-            return serial;													// 返回流水号
-        }
-
-        // 发送 RPC 的应答包
-        public void SendResponse(uint serial, xx.IObject pkg)
-        {
-            if (disposed) throw new ObjectDisposedException("XxUvTcpBase");
-
-            bbSend.Clear();
-            bbSend.Reserve(5);
-            bbSend.dataLen = 5;
-            bbSend.Write(serial);                                           // 在包前写入流水号
-            bbSend.WriteRoot(pkg);
-            var p = bbSend.buf;
-            var dataLen = bbSend.dataLen - 5;
-            if (dataLen <= ushort.MaxValue)
-            {
-                p[2] = 0b00000010;                                          // 这里标记包头为 Request 类型
-                p[3] = (byte)dataLen;
-                p[4] = (byte)(dataLen >> 8);
-                SendBytes(p, 2, dataLen + 3);
-            }
-            else
-            {
-                p[0] = 0b00000110;                                          // 这里标记包头为 Big + Request 类型
-                p[1] = (byte)dataLen;
-                p[2] = (byte)(dataLen >> 8);
-                p[3] = (byte)(dataLen >> 16);
-                p[4] = (byte)(dataLen >> 24);
-                SendBytes(p, 0, dataLen + 5);
-            }
-        }
-
-
-        // 超时回调所有被跟踪 rpc 流水号并清空( 内部函数. 会自动在 OnDispose, OnDisconnect 事件前调用以触发超时回调 )
-        public void RpcTraceCallback()
-        {
-            if (rpcSerials != null)
-            {
-                // 将就用 .net 的 HashSet, 免得导致 版本变化出 except
-                var serials = new uint[rpcSerials.Count];
-                rpcSerials.CopyTo(serials);
-                foreach (var serial in serials)
-                {
-                    loop.rpcManager.Callback(serial, null);
-                    break;
-                }
-                serials = null;
-            }
-        }
-
-        // 增强的 SendRequest 实现 断线时 立即发起相关 rpc 超时回调. 封装了解包操作. 
-        public void SendRequestEx(xx.IObject pkg, Action<IObject> cb, int interval = 0)
-        {
-            var serial = SendRequest(pkg, (uint ser, BBuffer bb) =>
+            var serial = loop.rpcManager.Register((int ser, BBuffer bb) =>
             {
                 if (rpcSerials != null) rpcSerials.Remove(ser);
                 xx.IObject inPkg = null;   // 如果 超时或 read 异常, inPkg 会保持空值
@@ -623,14 +479,37 @@ namespace xx
                 }
                 cb(inPkg); // call 原始 lambda
             }, interval);
-
+            Send(pkg, -serial);
             if (rpcSerials == null)
             {
-                rpcSerials = new System.Collections.Generic.HashSet<uint>();
+                rpcSerials = new System.Collections.Generic.HashSet<int>();
             }
             rpcSerials.Add(serial);
         }
 
+        // 发应答
+        public void SendResponse(int serial, xx.IObject pkg)
+        {
+            if (disposed) throw new ObjectDisposedException("XxUvTcpBase");
+            Send(pkg, serial);
+        }
+
+        // 超时回调所有被跟踪 rpc 流水号并清空( 内部函数. 会自动在 OnDispose, OnDisconnect 事件前调用以触发超时回调 )
+        public void RpcTraceCallback()
+        {
+            if (rpcSerials != null)
+            {
+                // 将就用 .net 的 HashSet, 免得导致 版本变化出 except
+                var serials = new int[rpcSerials.Count];
+                rpcSerials.CopyTo(serials);
+                foreach (var serial in serials)
+                {
+                    loop.rpcManager.Callback(serial, null);
+                    break;
+                }
+                serials = null;
+            }
+        }
 
         public void DelayRelease(int interval = 0)
         {
@@ -1341,13 +1220,13 @@ namespace xx
         UvTimer timer;
 
         // 循环使用的自增流水号
-        uint serial;
+        int serial;
 
         // 流水号 与 cb(bb) 回调 的映射. bb 为空表示超时调用
-        Dict<uint, Action<uint, BBuffer>> mapping = new Dict<uint, Action<uint, BBuffer>>();
+        Dict<int, Action<int, BBuffer>> mapping = new Dict<int, Action<int, BBuffer>>();
 
         // 用一个队列记录流水号的超时时间, 以便删掉超时的. first: timeout ticks
-        Queue<Pair<int, uint>> serials = new Queue<Pair<int, uint>>();
+        Queue<Pair<int, int>> serials = new Queue<Pair<int, int>>();
 
         // 默认计时帧数
         int defaultInterval;
@@ -1385,12 +1264,12 @@ namespace xx
         }
 
         // 放入上下文, 返回流水号
-        public uint Register(Action<uint, BBuffer> cb, int interval = 0)
+        public int Register(Action<int, BBuffer> cb, int interval = 0)
         {
             if (interval == 0) interval = defaultInterval;
-            unchecked { ++serial; }                     // 循环自增
+            unchecked { serial = (serial + 1) & 0x7FFFFFFF; }           // 非负循环自增
             var r = mapping.Add(serial, cb, true);
-            serials.Push(new Pair<int, uint>
+            serials.Push(new Pair<int, int>
             {
                 first = ticks + interval,       // 算出超时 ticks
                 second = serial
@@ -1400,13 +1279,13 @@ namespace xx
 
         // 根据流水号 反注册回调事件( 通常出现于提前断线或退出之后不想收到相关回调 )
         // 这种情况不产生回调
-        public void Unregister(uint serial)
+        public void Unregister(int serial)
         {
             mapping.Remove(serial);
         }
 
         // 根据 流水号 定位到 回调函数并调用( 由 UvTcpXxxx 来 call )
-        public void Callback(uint serial, BBuffer bb)
+        public void Callback(int serial, BBuffer bb)
         {
             int idx = mapping.Find(serial);
             if (idx == -1) return;              // 已超时移除
@@ -1414,77 +1293,6 @@ namespace xx
             mapping.RemoveAt(idx);
             if (a != null) a(serial, bb);
         }
-    }
-
-    public abstract class UvContextBase
-    {
-        public UvTcpUdpBase peer;
-        public bool peerAlive { get { return peer != null && !peer.Disconnected(); } }
-
-        // 绑连接. 成功返回 true
-        public bool BindPeer(UvTcpUdpBase p)
-        {
-            if (peer != null) return false;
-            p.OnReceiveRequest = OnPeerReceiveRequest;
-            p.OnReceivePackage = OnPeerReceivePackage;
-            p.OnDispose = OnPeerDisconnect;
-            peer = p;
-            return true;
-        }
-
-        // T 掉已有连接, 不会产生 OnDispose 调用( 如果非立即断开, 则会在几秒后被 timeouter 干掉 )
-        public void KickPeer(bool immediately = true)
-        {
-            if (peer != null)
-            {
-                peer.OnDispose = null;              // 防止产生 OnDispose 调用
-                peer.OnReceivePackage = null;       // 清空收发包回调
-                peer.OnReceiveRequest = null;
-
-                if (immediately)
-                {
-                    peer.Dispose();                 // 立即断开
-                }
-                peer = null;
-            }
-        }
-
-        // RPC 请求解包, 调处理函数
-        public void OnPeerReceiveRequest(uint serial, BBuffer bb)
-        {
-            var ibb = bb.TryReadRoot<IObject>();
-            if (ibb == null)
-            {
-                KickPeer();
-                return;
-            }
-            //peer.TimeoutReset();
-            HandleRequest(serial, ibb);
-        }
-
-        // 普通 解包, 调处理函数
-        public void OnPeerReceivePackage(BBuffer bb)
-        {
-            var ibb = bb.TryReadRoot<IObject>();
-            if (ibb == null)
-            {
-                KickPeer();
-                return;
-            }
-            HandlePackage(ibb);
-        }
-
-        public void OnPeerDisconnect()
-        {
-            KickPeer(false);
-            HandleDisconnect();
-        }
-
-
-        // 需要实现的函数些
-        public abstract void HandleRequest(uint serial, IObject ibb);
-        public abstract void HandlePackage(IObject ibb);
-        public abstract void HandleDisconnect();
     }
 
     public static class UvInterop
@@ -1630,46 +1438,6 @@ namespace xx
 
 
 
-
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int xxuv_udp_init(IntPtr loop, IntPtr udp);
-
-        //[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        //public static extern int xxuv_udp_bind(IntPtr udp, IntPtr addr, uint flags);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int xxuv_udp_bind_(IntPtr udp, IntPtr addr);
-
-        //[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        //public static extern int xxuv_udp_recv_start(IntPtr udp, uv_alloc_cb alloc_cb, uv_udp_recv_cb recv_cb);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_udp_recv_cb(IntPtr udp, IntPtr nread, IntPtr buf_t, IntPtr addr, uint flags);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int xxuv_udp_recv_start_(IntPtr udp, uv_udp_recv_cb recv_cb);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int xxuv_udp_recv_stop(IntPtr udp);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void uv_udp_send_cb(IntPtr req, int status);
-
-        //[DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        //public static extern int xxuv_udp_send(IntPtr req, IntPtr udp, uv_buf_t bufs[], uint nbufs, IntPtr addr, uv_udp_send_cb send_cb);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int xxuv_udp_send_(IntPtr udp, IntPtr buf, uint offset, uint len, IntPtr addr);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr xxuv_udp_get_send_queue_size(IntPtr udp);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int xxuv_fill_ip(IntPtr addr, IntPtr buf, int buf_len, ref int data_len);
-
-        [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void xxuv_addr_copy(IntPtr from, IntPtr to);
 
 
 

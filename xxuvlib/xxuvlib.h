@@ -27,7 +27,6 @@ extern "C" {
 	XXUVLIB_API uv_signal_t* xxuv_alloc_uv_signal_t(void* ud) noexcept;
 
 	XXUVLIB_API void xxuv_free(void* p) noexcept;
-	XXUVLIB_API void xxuv_pool_free(uv_loop_t* loop, void* p) noexcept;
 
 	XXUVLIB_API void* xxuv_get_ud(void* p) noexcept;
 	XXUVLIB_API void* xxuv_get_ud_from_uv_connect_t(uv_connect_t* req) noexcept;
@@ -67,19 +66,6 @@ extern "C" {
 	XXUVLIB_API size_t xxuv_stream_get_write_queue_size(const uv_stream_t* stream) noexcept;
 	XXUVLIB_API int xxuv_try_write(uv_stream_t* stream, const uv_buf_t bufs[], unsigned int nbufs) noexcept;
 	XXUVLIB_API int xxuv_try_write_(uv_stream_t* stream, char* buf, unsigned int len) noexcept;
-
-
-	XXUVLIB_API int xxuv_udp_init(uv_loop_t* loop, uv_udp_t* udp) noexcept;
-	XXUVLIB_API int xxuv_udp_bind(uv_udp_t* udp, const struct sockaddr* addr, unsigned int flags) noexcept;
-	XXUVLIB_API int xxuv_udp_bind_(uv_udp_t* udp, const struct sockaddr* addr) noexcept;
-	XXUVLIB_API int xxuv_udp_recv_start(uv_udp_t* udp, uv_alloc_cb alloc_cb, uv_udp_recv_cb recv_cb) noexcept;
-	XXUVLIB_API int xxuv_udp_recv_start_(uv_udp_t* udp, uv_udp_recv_cb recv_cb) noexcept;
-	XXUVLIB_API int xxuv_udp_recv_stop(uv_udp_t* udp) noexcept;
-	XXUVLIB_API int xxuv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, const uv_buf_t bufs[], unsigned int nbufs, const struct sockaddr* addr, uv_udp_send_cb send_cb) noexcept;
-	XXUVLIB_API int xxuv_udp_send_(uv_udp_t* handle, char const* buf, unsigned int offset, unsigned int len, const struct sockaddr* addr) noexcept;
-	XXUVLIB_API size_t xxuv_udp_get_send_queue_size(const uv_udp_t* udp) noexcept;
-	XXUVLIB_API void xxuv_addr_copy(sockaddr* from, sockaddr* to) noexcept;
-	XXUVLIB_API int xxuv_fill_ip(sockaddr* addr, char* buf, int buf_len, int* data_len) noexcept;
 
 
 	XXUVLIB_API int xxuv_timer_init(uv_loop_t* loop, uv_timer_t* timer_req) noexcept;
