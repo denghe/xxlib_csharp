@@ -391,7 +391,7 @@ namespace xx
 
             while (offset + 4 <= bbRecv.dataLen)           // ensure header len( 4 bytes )
             {
-                var dataLen = buf[offset + 1] + (buf[offset + 2] << 8) + (buf[offset + 3] << 16) + (buf[offset + 4] << 24);
+                var dataLen = buf[offset + 0] + (buf[offset + 1] << 8) + (buf[offset + 2] << 16) + (buf[offset + 3] << 24);
                 if (dataLen <= 0 /* || len > maxLimit */)
                 {
                     DisconnectImpl();
