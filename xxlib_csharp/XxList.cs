@@ -1015,7 +1015,7 @@ namespace xx
 
             for (int i = 0; i < vsDataLen; i++)
             {
-                var r = (IRef)vs[i];
+                var r = (IWeak)vs[i];
                 if (r.NotNull()) bb.Write(r.Lock());
                 else bb.Write((byte)0);
             }
@@ -1032,7 +1032,7 @@ namespace xx
             {
                 IObject tmp = null;
                 bb.Read(ref tmp);
-                var v = (IRef)vs[i];
+                var v = (IWeak)vs[i];
                 v.Reset(tmp);
                 vs[i] = (T)v;
             }

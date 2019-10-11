@@ -852,13 +852,13 @@ namespace xx
 
         // 试适配 Ref<T>
 
-        public void Write<T>(Ref<T> v) where T : Object
+        public void Write<T>(Weak<T> v) where T : Object
         {
             if (v.NotNull()) Write(v.pointer);
             else Write((byte)0);
         }
 
-        public void Read<T>(ref Ref<T> v) where T : Object
+        public void Read<T>(ref Weak<T> v) where T : Object
         {
             Read(ref v.pointer);
         }

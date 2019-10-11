@@ -48,6 +48,7 @@
     <Compile Include="XxDictEx.cs" />
     <Compile Include="XxDict.cs" />
     <Compile Include="XxObject.cs" />
+    <Compile Include="XxPos.cs" />
     <Compile Include="XxQueue.cs" />
     <Compile Include="XxList.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

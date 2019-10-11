@@ -42,7 +42,7 @@ namespace xx
         public virtual void MySqlAppend(StringBuilder sb, bool ignoreReadOnly) { }
 
 
-        // 可用 Release 来模拟 C++ Ref 效果
+        // 可用 Release 来模拟 C++ std::weak 效果
         public virtual void Release() { __isReleased = true; }
         public bool __isReleased;
 
@@ -85,7 +85,7 @@ namespace xx
     /// <summary>
     /// for 序列化时易于操作
     /// </summary>
-    public interface IRef
+    public interface IWeak
     {
         bool NotNull();
         IObject Lock();
@@ -93,9 +93,9 @@ namespace xx
     }
 
     /// <summary>
-    /// 模拟 C++ 下的 xx::Ref 弱引用效果. 主体需要调用 Release() 函数并最好置空
+    /// 模拟 C++ 下的 std::weak_ptr 弱引用效果. 主体需要调用 Release() 函数并最好置空
     /// </summary>
-    public struct Ref<T> : IRef where T : Object
+    public struct Weak<T> : IWeak where T : Object
     {
         public T pointer;
 
@@ -123,9 +123,9 @@ namespace xx
             return false;
         }
 
-        public static implicit operator Ref<T>(T p)
+        public static implicit operator Weak<T>(T p)
         {
-            return new Ref<T> { pointer = p };
+            return new Weak<T> { pointer = p };
         }
 
         public override string ToString()
