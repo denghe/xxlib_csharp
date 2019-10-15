@@ -1167,7 +1167,7 @@ namespace xx
             for (int shift = 0; shift < /*sizeof(T)*/8 * 8; shift += 7)
             {
                 if (offset == dataLen) throw new OverflowException();
-                var b = buf[offset++];
+                ulong b = buf[offset++];
                 v |= (b & 0x7Fu) << shift;
                 if ((b & 0x80) == 0) return;
             }
@@ -1180,7 +1180,7 @@ namespace xx
             for (int shift = 0; shift < /*sizeof(T)*/4 * 8; shift += 7)
             {
                 if (offset == dataLen) throw new OverflowException();
-                var b = buf[offset++];
+                uint b = buf[offset++];
                 v |= (b & 0x7Fu) << shift;
                 if ((b & 0x80) == 0) return;
             }
@@ -1193,7 +1193,7 @@ namespace xx
             for (int shift = 0; shift < /*sizeof(T)*/2 * 8; shift += 7)
             {
                 if (offset == dataLen) throw new OverflowException();
-                var b = buf[offset++];
+                uint b = buf[offset++];
                 v |= (ushort)((b & 0x7Fu) << shift);
                 if ((b & 0x80) == 0) return;
             }
@@ -1206,7 +1206,7 @@ namespace xx
             for (int shift = 0; shift < /*sizeof(T)*/4 * 8; shift += 7)
             {
                 if (offset == dataLen) return false;
-                var b = buf[offset++];
+                uint b = buf[offset++];
                 v |= (b & 0x7Fu) << shift;
                 if ((b & 0x80) == 0) return true;
             }
