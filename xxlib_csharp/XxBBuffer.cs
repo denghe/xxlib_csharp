@@ -832,7 +832,9 @@ namespace xx
             {
                 ReadRoot(ref t);
             }
-            catch { }
+            catch {
+                t = default(T);
+            }
             return t;
         }
 
