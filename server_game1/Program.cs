@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+//using xx;
 
 namespace server_game1
 {
@@ -118,12 +119,17 @@ namespace server_game1
                 bb.Write((uint)0);
                 return;
             }
-            bb.Write((uint)list.Count);
+            var len = (uint)list.Count;
+            //var len = (uint)list.dataLen;
+            //bb.Write(len);
             foreach (var o in list)
             {
-                //bb.Write1(o);
-                BBWriter<T>.instance.Write(bb, o);
+                bb.Write1(o);
             }
+            //for (int i = 0; i < len; ++i)
+            //{
+            //    bb.Write1(list[i]);
+            //}
         }
 
         public static void Write1<T>(this xx.BBuffer bb, List<List<List<T>>> list)
@@ -133,11 +139,17 @@ namespace server_game1
                 bb.Write((uint)0);
                 return;
             }
-            bb.Write((uint)list.Count);
+            var len = (uint)list.Count;
+            //bb.Write(len);
+            //bb.Write((uint)list.Count);
             foreach (var o in list)
             {
                 bb.Write1(o);
             }
+            //for (int i = 0; i < len; ++i)
+            //{
+            //    bb.Write1(list[i]);
+            //}
         }
 
 
@@ -205,7 +217,7 @@ namespace server_game1
                             WriteList(bb, a);
                         }
                         break;
-               
+
 
                 }
             }
@@ -257,9 +269,9 @@ namespace server_game1
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < 1000000; i++)
             {
-                bb.WriteList(list3);
-                bb.WriteList(list2);
-                bb.WriteList(list1);
+                bb.Write1(list3);
+                bb.Write1(list2);
+                bb.Write1(list1);
             }
             Console.WriteLine(sw.ElapsedMilliseconds);
             Console.WriteLine(ListUtils.counter);
